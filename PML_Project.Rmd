@@ -1,0 +1,78 @@
+---
+title: "PML project"
+author: "Goyo"
+date: "Sunday, January 25, 2015"
+output: html_document
+---
+
+#### Settings global options
+In this chunk (hidden) all necessary libraries and other formating tools are loaded.
+```{r setoptions, echo=FALSE, results='hide',include=FALSE}
+        library(AppliedPredictiveModeling)
+        library(caret)
+        library(rattle)
+        library(randomForest)
+        set.seed(1234)
+        
+```
+#### Setting the working directory
+```{r}
+        setwd("D:/COURSES/Coursera/08_Practical Machine Learning/08_Project")
+```
+### DATA SET
+
+The data set consists of measurements of how well 6 participants performed dumbell exercises. Several acceleromters were attached to variuous parts of their arms. 
+The particpants performed the Bicep Curl in 1 correct method and in 4 specific incorrect methods, resulting in 5 classes that will be predicted from the measurements.
+The correct class is Class A, the incorrect, but distinct classes are B, C, D and E.
+##### Loading data into R environment
+```{r}
+        
+trainingdata <- read.csv("./pml-training.csv",na.strings=c("NA","#DIV/0!",""))
+testingdata <- read.csv("./pml-testing.csv",na.strings=c("NA","#DIV/0!",""))
+```
+There are 159 independent variables, of which nearly 100 variables are descriptive statistics of the other fields, and so will be eliminated from the model.
+
+#### Data preprocessing:
+1.- Loading and preprocessing the data
+2.- Load training and testing data
+3.- Replace invalid strings as "NA"
+##### Delete any columns containg NAs in Trainingdata
+To the create the model it is only to clean-up "trainingData. "testingData" will be keep it as it is loaded form the file.
+
+```{r}
+training0 <- trainingdata[,colSums(is.na(testingdata))==0]
+# testing0 <- testingdata[,colSums(is.na(testingdata))==0]
+```
+The classification variable is 'classe' and consists of the values: A, B, C, D, E; with A = correct performance of the exercise, and the others correspond to intentionally performing the exercise wrong.
+##### Feature selection
+The first 7 independent variables are descriptive of the observation, and so will be eliminated
+The final clean and hopefully tidy data-set. And to avoid overloading the memory, initial data-set are deleted.
+```{r}
+train <- training0[c(-1:-7)]  
+# test <- testing0[c(-1:-7)]
+# rm(testing0,training0,trainingdata,testingdata)
+```
+### Training
+Once the data set and the training method has been specified the training is straightforward. The method chossen is Random Forest (improved bagging) algorithm
+
+```{r}
+control <- trainControl(method = "cv", number = 5)  
+T_ini <- Sys.time()    
+model <- train(train$classe ~ ., data=train, method="rf", trControl = control) 
+T_end <- Sys.time()
+```
+#### The model present and accurancy of `r round(100*max(model$results[,2]), 2)`% and `r T_end - T_ini`.
+
+## Predict 20 Test Cases
+The predict function, the final model, and the test data set is used to predict the "classe" values for the test data. Here are the 20 predictions:
+
+```{r}
+invalid <- apply(testingdata,2,function(x) {sum(is.na(x))})  
+test0 <- testingdata[,which(invalid == 0)]  
+ExtraVars  <- grep("X|user_name|timestamp|new_window|num_window", names(testingdata))  
+test <- test0[,-ExtraVars]  
+
+predTest <- predict(model$finalModel, newdata = test)  
+answers <- as.character(predTest)  
+answers 
+```
